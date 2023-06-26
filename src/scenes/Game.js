@@ -1,6 +1,6 @@
 import Phaser from "/src/lib/phaser.js";
 
-import Carrot from "../game/Carrot.js";
+import Carrot from "/src/game/Carrot.js";
 
 export default class Game extends Phaser.Scene{
 
@@ -16,24 +16,12 @@ export default class Game extends Phaser.Scene{
     /** @type {Phaser.Physics.Arcade.Group} */
     carrots
 
-    /** 
-     * @type {Phaser.Physics.Arcade.Sprite} 
-     * sprite
-     * */
+    /** @type {Phaser.GameObjects.Text} */
+    carrotsCollectedText
 
-    addCarotAbove(sprite){
-        const y = sprite.y - sprite.displayHeight
+    carrotsCollected = 0
 
-        /**@type {Phaser.physics.Arcade.Sprite} */
-        const carrot = this.carrots.get(sprite.x, y, 'carrot')
 
-        this.add.existing(carrot)
-
-        //update the physics body size
-        carrot.body.setSize(carrot.width, carrot.height)
-
-        return carrot
-    }
 
     constructor()
     {
@@ -64,7 +52,7 @@ export default class Game extends Phaser.Scene{
 // placement aléatoire de 5 plateformes sur l'écran
         for(let i=0; i<5; i++){
             const x = Phaser.Math.Between(80,400)
-            const y = 150 * i
+            const y = 140 * i
 
             const platform = this.platforms.create(x, y, 'platform')
             platform.scale = 0.5
@@ -91,6 +79,19 @@ export default class Game extends Phaser.Scene{
         })
         
         this.physics.add.collider(this.platforms, this.carrots)
+
+        this.physics.add.overlap(
+            this.player,
+            this.carrots,
+            this.handleCollectCarrot,
+            undefined,
+            this
+        )
+
+        const style = {color: '#000', fontsize: 24}
+        this.carrotsCollectedText = this.add.text(240, 10, 'Carrots:0', style)
+            .setScrollFactor(0)
+            .setOrigin(0.5, 0)
     }
 
     update(t, dt)
@@ -104,6 +105,22 @@ export default class Game extends Phaser.Scene{
             if(platform.y >= scrollY + 700){
                 platform.y = scrollY - Phaser.Math.Between(50, 100)
                 platform.body.updateFromGameObject()
+
+                this.addCarotAbove(platform)
+            }
+        })
+
+        this.carrots.children.iterate(child => {
+            /** @type {Phaser.Physics.Arcade.Sprite} */
+            const carrot = child
+
+            const scrollY = this.cameras.main.scrollY
+            if(carrot.y >= scrollY + 700){
+                
+
+               this.carrots.killAndHide(carrot)
+
+        this.physics.world.disableBody(carrot.body)
             }
         })
 
@@ -138,5 +155,45 @@ export default class Game extends Phaser.Scene{
         }else if (sprite.x > gameWidth + halfWidth){
             sprite.x = -halfWidth
         }
+    }
+
+    /** 
+     * @param {Phaser.GameObjects.Sprite} sprite
+     * */
+    addCarotAbove(sprite){
+        const y = sprite.y - sprite.displayHeight
+
+        /**@type {Phaser.physics.Arcade.Sprite} */
+        const carrot = this.carrots.get(sprite.x, y, 'carrot')
+
+        carrot.setActive(true)
+        carrot.setVisible(true)
+
+        this.add.existing(carrot)
+
+        //update the physics body size
+        carrot.body.setSize(carrot.width, carrot.height)
+
+        this.physics.world.enable(carrot)
+
+        return carrot
+    }
+
+    /**
+     * @param {Phaser.Physics.Arcade.Sprite} player
+     * @param {Carrot} carrot
+     */
+
+    handleCollectCarrot(player, carrot)
+    {
+
+        this.carrots.killAndHide(carrot)
+
+        this.physics.world.disableBody(carrot.body)
+
+        this.carrotsCollected++
+
+        const value = "Carrots:" + this.carrotsCollected
+        this.carrotsCollectedText.text = value
     }
 }
